@@ -1,0 +1,58 @@
+from flask import Flask, request, render_template
+import matplotlib.pyplot as plt
+
+app = Flask(__name__)
+
+# data to hold opinions on various political issues
+opinions = {}
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/submit_opinion', methods=['POST'])
+def submit_opinion():
+    # retrieve the selected political issue and opinion from the form
+    issue = request.form.get('issue')
+    opinion = request.form.get('opinion')
+
+    # increment the count for the selected political issue and opinion
+    if issue in opinions:
+        if opinion in opinions[issue]:
+            opinions[issue][opinion] += 1
+        else:
+            opinions[issue][opinion] = 1
+    else:
+        opinions[issue] = {opinion: 1}
+
+    return render_template('thank_you.html')
+
+@app.route('/results')
+def results():
+    # generate a pie chart of the results
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    for issue, issue_data in opinions.items():
+        labels = list(issue_data.keys())
+        values = list(issue_data.values())
+        ax.pie(values, labels=labels, autopct='%1.1f%%')
+        ax.set_title(issue)
+
+    # convert the plot to a PNG image
+    png_image = fig_to_png_image(fig)
+
+    return render_template('results.html', image=png_image)
+
+def fig_to_png_image(fig):
+    # convert the figure to a PNG image and return it as a data URI
+    import io
+    import urllib
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png')
+    buf.seek(0)
+    image_data = urllib.parse.quote(buf.getvalue())
+    return 'data:image/png;base64,' + image_data
+
+if __name__ == '__main__':
+    app.run(debug=True)
